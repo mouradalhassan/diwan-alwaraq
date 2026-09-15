@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>ديوان الورق</title>
+  <meta name="theme-color" content="#10231f" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@400;700&family=Amiri:ital,wght@0,400;0,700;1,400&family=Reem+Kufi:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 2l8 22 22 8-22 8-8 22-8-22-22-8 22-8z' fill='%23d4af37'/%3E%3C/svg%3E" />
+</head>
+<body>
+
+<!-- ornaments used everywhere -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="star8" viewBox="0 0 100 100">
+      <path d="M50 0 L61 34 L95 22 L73 50 L95 78 L61 66 L50 100 L39 66 L5 78 L27 50 L5 22 L39 34 Z"/>
+    </symbol>
+    <symbol id="corner" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M2 98 V30 Q2 2 30 2 H98"/>
+      <path d="M12 98 V40 Q12 12 40 12 H98"/>
+      <path d="M2 98 L24 76 M2 76 L24 54 M24 98 L46 76"/>
+      <circle cx="30" cy="30" r="9"/>
+      <path d="M30 14 L34 26 L46 30 L34 34 L30 46 L26 34 L14 30 L26 26 Z" fill="currentColor" stroke="none"/>
+    </symbol>
+    <symbol id="divider" viewBox="0 0 400 40" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M0 20 H150"/><path d="M250 20 H400"/>
+      <path d="M150 20 q10 -14 22 0 q10 14 22 0 q10 -14 22 0" />
+      <path d="M184 20 q8 -14 16 0 q8 14 16 0" />
+      <path d="M200 6 L204 16 L214 20 L204 24 L200 34 L196 24 L186 20 L196 16 Z" fill="currentColor" stroke="none"/>
+      <circle cx="150" cy="20" r="3" fill="currentColor"/><circle cx="250" cy="20" r="3" fill="currentColor"/>
+    </symbol>
+    <symbol id="crescent" viewBox="0 0 100 100">
+      <path d="M62 8 A42 42 0 1 0 62 92 A34 34 0 1 1 62 8 Z"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div id="app">
+
+  <!-- ===================== HOME ===================== -->
+  <section class="screen active" id="screen-home">
+    <div class="frame frame-lg home-frame">
+      <span class="c c1"><svg><use href="#corner"/></svg></span>
+      <span class="c c2"><svg><use href="#corner"/></svg></span>
+      <span class="c c3"><svg><use href="#corner"/></svg></span>
+      <span class="c c4"><svg><use href="#corner"/></svg></span>
+
+      <div class="emblem">
+        <svg class="emblem-star spin-slow"><use href="#star8"/></svg>
+        <svg class="emblem-star inner"><use href="#star8"/></svg>
+        <svg class="emblem-crescent"><use href="#crescent"/></svg>
+      </div>
+
+      <p class="basmala">بسم الله نبدأ اللعب</p>
+      <h1 class="title">ديوان الورق</h1>
+      <svg class="divider"><use href="#divider"/></svg>
+      <p class="subtitle">مجلسٌ للورق على الطريقة القديمة — ليخة، تريكس، وأربعمية</p>
+
+      <button class="btn btn-brass btn-xl" id="btn-join">
+        <span>انضم إلى اللعبة</span>
+      </button>
+
+      <p class="hint">أنشئ ديواناً وشارك رمزه مع رفاقك، أو ادخل برمزٍ وصلك</p>
+    </div>
+    <div class="lantern lantern-l"></div>
+    <div class="lantern lantern-r"></div>
+  </section>
+
+  <!-- ===================== CHOOSE GAME ===================== -->
+  <section class="screen" id="screen-choose">
+    <div class="frame frame-lg">
+      <span class="c c1"><svg><use href="#corner"/></svg></span>
+      <span class="c c2"><svg><use href="#corner"/></svg></span>
+      <span class="c c3"><svg><use href="#corner"/></svg></span>
+      <span class="c c4"><svg><use href="#corner"/></svg></span>
+
+      <h2 class="h2">اختر اللعبة</h2>
+      <svg class="divider"><use href="#divider"/></svg>
+
+      <div class="games">
+        <button class="game-tile" data-game="leekha">
+          <svg class="tile-star"><use href="#star8"/></svg>
+          <span class="tile-name">ليخة</span>
+          <span class="tile-desc">هدية من ثلاث أوراق، وكلّ كبّة نقطة</span>
+        </button>
+        <button class="game-tile" data-game="trix">
+          <svg class="tile-star"><use href="#star8"/></svg>
+          <span class="tile-name">تريكس</span>
+          <span class="tile-desc">قريباً</span>
+          <span class="tile-soon">قريباً</span>
+        </button>
+        <button class="game-tile" data-game="trixComplex">
+          <svg class="tile-star"><use href="#star8"/></svg>
+          <span class="tile-name">تريكس كومبلكس</span>
+          <span class="tile-desc">قريباً</span>
+          <span class="tile-soon">قريباً</span>
+        </button>
+        <button class="game-tile" data-game="four00">
+          <svg class="tile-star"><use href="#star8"/></svg>
+          <span class="tile-name">٤٠٠</span>
+          <span class="tile-desc">قريباً</span>
+          <span class="tile-soon">قريباً</span>
+        </button>
+      </div>
+
+      <button class="btn btn-ghost" data-back="screen-home">رجوع</button>
+    </div>
+  </section>
+
+  <!-- ===================== CREATE / JOIN PARTY ===================== -->
+  <section class="screen" id="screen-party">
+    <div class="frame frame-md">
+      <span class="c c1"><svg><use href="#corner"/></svg></span>
+      <span class="c c2"><svg><use href="#corner"/></svg></span>
+      <span class="c c3"><svg><use href="#corner"/></svg></span>
+      <span class="c c4"><svg><use href="#corner"/></svg></span>
+
+      <p class="kicker" id="party-game">ليخة</p>
+      <h2 class="h2">الديوان</h2>
+      <svg class="divider"><use href="#divider"/></svg>
+
+      <label class="field">
+        <span>اسمك في المجلس</span>
+        <input id="inp-name" maxlength="18" placeholder="مثلاً: أبو خليل" autocomplete="nickname" />
+      </label>
+
+      <div class="party-split">
+        <div class="party-col">
+          <h3 class="h3">أنشئ ديواناً</h3>
+          <p class="muted">يُعطيك رمزاً تشاركه مع رفاقك</p>
+          <button class="btn btn-brass" id="btn-create">أنشئ ديواناً</button>
+        </div>
+        <div class="party-or"><span>أو</span></div>
+        <div class="party-col">
+          <h3 class="h3">ادخل برمز</h3>
+          <input id="inp-code" class="code-input" maxlength="6" placeholder="ABC123" autocapitalize="characters" spellcheck="false" />
+          <button class="btn btn-brass" id="btn-joincode">ادخل الديوان</button>
+        </div>
+      </div>
+
+      <button class="btn btn-ghost" data-back="screen-choose">رجوع</button>
+    </div>
+  </section>
+
+  <!-- ===================== LOBBY ===================== -->
+  <section class="screen" id="screen-lobby">
+    <div class="frame frame-lg">
+      <span class="c c1"><svg><use href="#corner"/></svg></span>
+      <span class="c c2"><svg><use href="#corner"/></svg></span>
+      <span class="c c3"><svg><use href="#corner"/></svg></span>
+      <span class="c c4"><svg><use href="#corner"/></svg></span>
+
+      <p class="kicker" id="lobby-game">ليخة</p>
+      <h2 class="h2">مجلس الانتظار</h2>
+      <svg class="divider"><use href="#divider"/></svg>
+
+      <div class="code-plate">
+        <span class="code-label">رمز الديوان</span>
+        <span class="code-value" id="lobby-code">——————</span>
+        <div class="code-actions">
+          <button class="btn btn-small" id="btn-copy">انسخ الرمز</button>
+          <button class="btn btn-small" id="btn-share">شارك الرابط</button>
+        </div>
+      </div>
+
+      <div class="seats" id="lobby-seats"></div>
+
+      <p class="muted" id="lobby-status">بانتظار الرفاق…</p>
+      <div class="row">
+        <button class="btn btn-brass" id="btn-start" disabled>ابدأ اللعبة</button>
+        <button class="btn btn-ghost" id="btn-leave">غادر الديوان</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TABLE ===================== -->
+  <section class="screen" id="screen-table">
+    <header class="hud">
+      <div class="hud-l">
+        <span class="hud-game" id="hud-game">ليخة</span>
+        <span class="hud-sep">۞</span>
+        <span class="hud-round" id="hud-round">الجولة ١</span>
+      </div>
+      <div class="hud-c" id="hud-msg"></div>
+      <div class="hud-r">
+        <button class="btn btn-tiny" id="btn-scores">النقاط</button>
+        <span class="hud-code" id="hud-code">ABC123</span>
+      </div>
+    </header>
+
+    <div class="table" id="table">
+      <div class="felt">
+        <div class="felt-ring"></div>
+      </div>
+
+      <div class="seat-spot pos-2" data-pos="2"></div>
+      <div class="seat-spot pos-3" data-pos="3"></div>
+      <div class="seat-spot pos-1" data-pos="1"></div>
+      <div class="seat-spot pos-0" data-pos="0"></div>
+
+      <div class="trick" id="trick">
+        <div class="trick-slot pos-0"></div>
+        <div class="trick-slot pos-1"></div>
+        <div class="trick-slot pos-2"></div>
+        <div class="trick-slot pos-3"></div>
+        <div class="trick-banner" id="trick-banner"></div>
+      </div>
+
+      <div class="giftbox" id="giftbox" hidden>
+        <div class="gift-head">
+          <svg class="gift-star"><use href="#star8"/></svg>
+          <span class="gift-title">الهديّة</span>
+          <div class="timer" id="gift-timer">
+            <svg viewBox="0 0 40 40"><circle class="t-bg" cx="20" cy="20" r="17"/><circle class="t-fg" cx="20" cy="20" r="17"/></svg>
+            <span id="gift-timer-num">20</span>
+          </div>
+        </div>
+        <p class="gift-sub">اختر ثلاث أوراق تُهديها لمن على يمينك</p>
+        <div class="gift-slots" id="gift-slots">
+          <div class="gift-slot" data-i="0"></div>
+          <div class="gift-slot" data-i="1"></div>
+          <div class="gift-slot" data-i="2"></div>
+        </div>
+        <button class="btn btn-brass" id="btn-gift" disabled>أرسل الهديّة</button>
+        <p class="gift-wait" id="gift-wait" hidden>أُرسلت هديّتك — بانتظار الآخرين</p>
+      </div>
+    </div>
+
+    <div class="hand-wrap">
+      <div class="hand" id="hand"></div>
+    </div>
+  </section>
+
+  <!-- ===================== OVERLAYS ===================== -->
+  <div class="overlay" id="overlay-scores" hidden>
+    <div class="frame frame-sm">
+      <span class="c c1"><svg><use href="#corner"/></svg></span>
+      <span class="c c2"><svg><use href="#corner"/></svg></span>
+      <span class="c c3"><svg><use href="#corner"/></svg></span>
+      <span class="c c4"><svg><use href="#corner"/></svg></span>
+      <h2 class="h2" id="scores-title">النقاط</h2>
+      <svg class="divider"><use href="#divider"/></svg>
+      <p class="verdict" id="scores-verdict" hidden></p>
+      <div class="teams" id="teams"></div>
+      <table class="scores" id="scores-table"></table>
+      <div class="row">
+        <button class="btn btn-brass" id="btn-next-round" hidden>جولة جديدة</button>
+        <button class="btn btn-ghost" id="btn-close-scores">إغلاق</button>
+      </div>
+      <p class="muted" id="scores-wait" hidden>بانتظار المضيف ليبدأ جولة جديدة…</p>
+    </div>
+  </div>
+
+  <div id="toasts"></div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
