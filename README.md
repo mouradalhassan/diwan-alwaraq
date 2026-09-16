@@ -40,7 +40,8 @@ Invite links look like `http://host/?code=ABC123` and drop the friend straight o
 
 - Partnership game: seats 0 & 2 vs seats 1 & 3 (partners sit opposite).
 - 52-card deck shuffled, 13 cards each. Rank order: 2 … 10, J (شاب), Q (بنت), K (شيخ), A (قص).
-- **Gift**: each player picks 3 cards (20 s timer, random cards if late). Odd rounds they go to the **right**, even rounds to the **left**.
+- **Gift**: each player picks 3 cards (20 s timer; if late, the three most dangerous legal cards are picked automatically). Odd rounds they go to the **right**, even rounds to the **left**.
+- **Gift rule**: a gift may not empty a suit you hold — except spades when every spade you hold is Q or higher, and diamonds when every diamond you hold is 10 or higher. Enforced for players, bots and the auto-pick.
 - The player to the dealer's right leads any card; others must follow suit if they can. Highest card of the led suit takes the pile and leads next. The deal rotates right each round, starting with the host.
 - **Leekha principle**: a player void in the led suit who holds Q♠ or 10♦ must play one of them (either, if both).
 - Points eaten by the trick taker: **Q♠ = 13**, **10♦ = 10**, every ♥ = 1 (36 per round). Points are per player; team score = sum of partners.
