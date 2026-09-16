@@ -69,6 +69,24 @@ function cardPoints(card) {
   return 0;
 }
 
+// How risky a card is to keep in hand — used to pick gifts automatically
+// (timeout) and by the bot. Higher = more dangerous.
+function dangerOf(c) {
+  if (c === 'QS') return 60;
+  if (c === '10D') return 55;
+  if (c === 'AS') return 40;
+  if (c === 'KS') return 36;
+  if (c === 'AD') return 24;
+  if (c === 'KD') return 22;
+  if (c === 'JD') return 18;
+  if (suitOf(c) === 'H') return 10 + rankValue(c);
+  return rankValue(c);
+}
+
+function mostDangerous(hand, n) {
+  return hand.slice().sort((a, b) => dangerOf(b) - dangerOf(a)).slice(0, n);
+}
+
 class Leekha {
   constructor() {
     this.roundNo = 0;
@@ -121,10 +139,11 @@ class Leekha {
     return { ok: true, allDone: this.giftSel.every(Boolean) };
   }
 
+  // Seats that did not pick in time give away their three most dangerous cards.
   autoGift() {
     for (let s = 0; s < SEATS; s++) {
       if (this.giftSel[s]) continue;
-      this.giftSel[s] = shuffle(this.hands[s].slice()).slice(0, GIFT_SIZE);
+      this.giftSel[s] = mostDangerous(this.hands[s], GIFT_SIZE);
     }
   }
 
@@ -250,6 +269,8 @@ module.exports = {
   MATCH_LIMIT,
   LEEKHA_CARDS,
   cardPoints,
+  dangerOf,
+  mostDangerous,
   suitOf,
   rankOf,
   teamOf,

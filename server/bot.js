@@ -11,29 +11,17 @@
 //   void  → dump the most dangerous card (the engine already forces Q♠/10♦)
 // ---------------------------------------------------------------------------
 
-const { suitOf, rankOf, RANKS, cardPoints } = require('./leekha');
+const { suitOf, rankOf, RANKS, cardPoints, mostDangerous: dangerous } = require('./leekha');
 
 const rv = (c) => RANKS.indexOf(rankOf(c));
 const isPoint = (c) => cardPoints(c) > 0;
 
-function danger(c) {
-  if (c === 'QS') return 60;
-  if (c === '10D') return 55;
-  if (c === 'AS') return 40;
-  if (c === 'KS') return 36;
-  if (c === 'AD') return 24;
-  if (c === 'KD') return 22;
-  if (c === 'JD') return 18;
-  if (suitOf(c) === 'H') return 10 + rv(c);
-  return rv(c);
-}
-
 const lowest = (cards) => cards.slice().sort((a, b) => rv(a) - rv(b))[0];
 const highest = (cards) => cards.slice().sort((a, b) => rv(b) - rv(a))[0];
-const mostDangerous = (cards) => cards.slice().sort((a, b) => danger(b) - danger(a))[0];
+const mostDangerous = (cards) => dangerous(cards, 1)[0];
 
 function chooseGift(hand) {
-  return hand.slice().sort((a, b) => danger(b) - danger(a)).slice(0, 3);
+  return dangerous(hand, 3);
 }
 
 function choosePlay(engine, seat) {

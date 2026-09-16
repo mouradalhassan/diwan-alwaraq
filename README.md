@@ -1,7 +1,9 @@
 # ديوان الورق — Diwan al-Waraq
 
-Online Levantine card games. Monochrome calligraphic design (white canvas, jet-black Thuluth-style type, grey typographic noise).
+Online Levantine card games in a Damascene-royal design: deep emerald and burgundy, gold arabesque, carved-plaster frames, an ornamented rectangular walnut-and-velvet table, cream cards with red/black vector suits. Photographs of the Umayyad Mosque mosaics and Islamic carvings (Wikimedia Commons, CC BY-SA — see `public/img/ATTRIBUTION.md`).
 Currently playable: **ليخة (Leekha)**. Trix, Trix Complex and 400 are listed as "coming soon".
+
+Game-style features: illustrated avatars (12 Levantine characters), live presence panel + activity feed, quick emotes at the table, last-trick viewer, per-seat turn rings and round-score cubes, leave-anytime (HUD and scoreboard), synthesized sound effects.
 
 ## Run
 

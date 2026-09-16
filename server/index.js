@@ -32,6 +32,35 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
 // ---------------------------------------------------------------------------
+// Presence — site-wide "who's here" panel and activity feed
+// ---------------------------------------------------------------------------
+
+const feed = [];
+function logEvent(text, kind = 'info') {
+  feed.unshift({ t: Date.now(), text, kind });
+  if (feed.length > 14) feed.pop();
+  broadcastPresence();
+}
+function presence() {
+  let playing = 0;
+  let lobbies = 0;
+  for (const r of rooms.values()) {
+    if (r.engine) playing += humans(r).filter((p) => p.connected).length;
+    else lobbies += 1;
+  }
+  return { online: io.engine.clientsCount, tables: rooms.size, lobbies, playing, feed };
+}
+function broadcastPresence() {
+  io.emit('presence', presence());
+}
+
+const AVATARS = 12;
+const cleanAvatar = (a) => {
+  const n = parseInt(a, 10);
+  return Number.isFinite(n) && n >= 0 && n < AVATARS ? n : Math.floor(Math.random() * AVATARS);
+};
+
+// ---------------------------------------------------------------------------
 // Rooms ("ديوان")
 // ---------------------------------------------------------------------------
 
@@ -131,6 +160,7 @@ function addBots(room) {
     room.players.push({
       id: `bot:${room.code}:${seat}`,
       name: pool[n++ % pool.length],
+      avatar: cleanAvatar(NaN),
       seat,
       socketId: null,
       connected: true,
@@ -166,6 +196,7 @@ function viewFor(room, me) {
     players: room.players.map((p) => ({
       id: p.id,
       name: p.name,
+      avatar: p.avatar,
       seat: p.seat,
       connected: p.connected,
       isBot: !!p.isBot,
@@ -292,6 +323,11 @@ function doPlay(room, seat, card) {
       e.clearTrick();
       scheduleTurn(room);
       broadcast(room);
+      if (e.phase === 'gameOver') {
+        const w = e.winnerTeam;
+        const names = w === null ? null : room.players.filter((p) => p.seat % 2 === w).map((p) => p.name).join(' و ');
+        logEvent(names ? `فاز ${names} بمباراة ${GAMES[room.game].name}` : `تعادل في مباراة ${GAMES[room.game].name}`, 'win');
+      }
     }, TRICK_HOLD_MS);
   } else {
     scheduleTurn(room);
@@ -329,6 +365,9 @@ io.on('connection', (socket) => {
     removePlayer(r, p);
   }
 
+  socket.emit('presence', presence());
+  broadcastPresence();
+
   socket.on('hello', ({ playerId } = {}, cb) => {
     const code = playerRoom.get(playerId);
     const r = code && rooms.get(code);
@@ -351,7 +390,7 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('createParty', ({ playerId, name, game, withBots } = {}, cb) => {
+  socket.on('createParty', ({ playerId, name, avatar, game, withBots } = {}, cb) => {
     if (!GAMES[game]) return ack(cb, { ok: false, error: 'لعبة غير معروفة' });
     if (!GAMES[game].ready)
       return ack(cb, { ok: false, error: `${GAMES[game].name} قادمة قريباً` });
@@ -361,6 +400,7 @@ io.on('connection', (socket) => {
     const p = {
       id: playerId,
       name: cleanName(name),
+      avatar: cleanAvatar(avatar),
       seat: 0,
       socketId: null,
       connected: false,
@@ -373,10 +413,11 @@ io.on('connection', (socket) => {
     bind(r, p);
     if (withBots && !REQUIRE_FOUR_HUMANS) addBots(r);
     broadcast(r);
+    logEvent(withBots ? `${p.name} جلس يلعب ${GAMES[game].name} مع البوتات` : `${p.name} فتح ديوان ${GAMES[game].name}`, withBots ? 'bots' : 'create');
     ack(cb, { ok: true, code: r.code });
   });
 
-  socket.on('joinParty', ({ playerId, name, code } = {}, cb) => {
+  socket.on('joinParty', ({ playerId, name, avatar, code } = {}, cb) => {
     const r = rooms.get(String(code || '').trim().toUpperCase());
     if (!r) return ack(cb, { ok: false, error: 'لا يوجد ديوان بهذا الرمز' });
     const existing = r.players.find((p) => p.id === playerId);
@@ -398,6 +439,7 @@ io.on('connection', (socket) => {
     const p = {
       id: playerId,
       name: cleanName(name),
+      avatar: cleanAvatar(avatar),
       seat: freeSeat(r),
       socketId: null,
       connected: false,
@@ -409,11 +451,24 @@ io.on('connection', (socket) => {
     bind(r, p);
     r.notice = `${p.name} دخل الديوان`;
     broadcast(r);
+    logEvent(`${p.name} انضم إلى ديوان ${GAMES[r.game].name}`, 'join');
     ack(cb, { ok: true, code: r.code });
   });
 
+  // quick reactions shown above the player's seat (rate limited)
+  let lastEmote = 0;
+  socket.on('emote', ({ id } = {}) => {
+    if (!room || !me) return;
+    const now = Date.now();
+    if (now - lastEmote < 1500) return;
+    lastEmote = now;
+    io.to(room.code).emit('emote', { seat: me.seat, id: String(id || '').slice(0, 12) });
+  });
+
   socket.on('leaveParty', (_, cb) => {
+    const name = me && me.name;
     leaveCurrent();
+    if (name) logEvent(`${name} غادر الديوان`, 'leave');
     ack(cb, { ok: true });
   });
 
@@ -448,7 +503,9 @@ io.on('connection', (socket) => {
     const phase = phaseOf(room);
     if (phase !== 'lobby' && phase !== 'roundEnd' && phase !== 'gameOver')
       return ack(cb, { ok: false, error: 'الجولة جارية' });
+    const fresh = !room.engine || room.engine.phase === 'gameOver';
     startRound(room);
+    if (fresh) logEvent(`${me.name} بدأ مباراة ${GAMES[room.game].name}${room.players.some((p) => p.isBot) ? ' مع البوتات' : ''}`, 'start');
     ack(cb, { ok: true });
   });
 
@@ -482,6 +539,7 @@ io.on('connection', (socket) => {
     }
     broadcast(r);
   });
+  socket.on('disconnect', () => broadcastPresence());
 });
 
 // Garbage-collect stale rooms every 10 minutes.
