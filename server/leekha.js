@@ -164,6 +164,11 @@ class Leekha {
     return this.legalPlay(seat).cards;
   }
 
+  randomLegal(seat) {
+    const cards = this.legalCards(seat);
+    return cards[Math.floor(Math.random() * cards.length)];
+  }
+
   playCard(seat, card) {
     if (this.phase !== 'play') return { ok: false, error: 'ليس وقت اللعب' };
     if (this.trick.winner !== null) return { ok: false, error: 'انتظر قليلاً' };

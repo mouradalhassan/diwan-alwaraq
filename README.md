@@ -1,6 +1,6 @@
 # ديوان الورق — Diwan al-Waraq
 
-Online Levantine card games with an old-Arabic manuscript look.
+Online Levantine card games. Monochrome calligraphic design (white canvas, jet-black Thuluth-style type, grey typographic noise).
 Currently playable: **ليخة (Leekha)**. Trix, Trix Complex and 400 are listed as "coming soon".
 
 ## Run
@@ -10,22 +10,29 @@ npm install
 npm start          # http://localhost:3000
 ```
 
-`npm run dev` restarts the server on file changes. `npm test` runs a 4-client smoke test that plays a full round.
+`npm run dev` restarts the server on file changes. `npm test` runs the engine checks, a 4-human round, and a 1-human-vs-3-bots round.
 
 ## Structure
 
 ```
-server/index.js   Express + Socket.IO: parties (6-letter codes), seats, timers, per-player views
-server/leekha.js  Leekha engine (deal, gift, follow-suit, trick resolution, points)
+server/index.js   Express + Socket.IO: parties (6-letter codes), seats, gift/turn timers, bots, per-player views
+server/leekha.js  Leekha engine (deal, gift, follow-suit, Leekha principle, trick resolution, points, 101 match)
+server/bot.js     rule-abiding bot (gift + play heuristics)
 public/           index.html, style.css, app.js — vanilla frontend
-test/smoke.js     end-to-end test with 4 socket clients
+test/smoke.js     engine unit checks + end-to-end rounds
 ```
 
 ## Flow
 
-Home → **انضم إلى اللعبة** → choose game → enter name → **أنشئ ديواناً** (get a code, share it) or **ادخل برمز**.
+Home → **ادخل** → choose game → name (+ optional code) → **ادخل** creates a party if the code is empty, joins it otherwise.
 Invite links look like `http://host/?code=ABC123` and drop the friend straight onto the join screen.
 4 seats; the host starts when the table is full. A refreshed tab keeps its seat (player id stored in localStorage).
+
+**Bots** (testing mode): "العب وحدك مع ثلاثة بوتات" on the name screen, or "أكمل المقاعد بالبوتات" in the lobby. A human joining a bot-filled lobby takes a bot's seat. Set `REQUIRE_FOUR_HUMANS = true` in `server/index.js` to switch bots off and require four real players.
+
+**Turn clock**: 30 s per play, shown as a ring around the avatar; on expiry a random legal card is played. Gift phase: 20 s.
+
+**Playing a card**: drag it onto the table, or double-tap it. Sound effects are synthesized in-browser (Web Audio, no files) — mute with ♪.
 
 ## Leekha rules as implemented
 
@@ -36,3 +43,7 @@ Invite links look like `http://host/?code=ABC123` and drop the friend straight o
 - **Leekha principle**: a player void in the led suit who holds Q♠ or 10♦ must play one of them (either, if both).
 - Points eaten by the trick taker: **Q♠ = 13**, **10♦ = 10**, every ♥ = 1 (36 per round). Points are per player; team score = sum of partners.
 - Match ends after a round in which any player or any team reaches **101**; the team with the lower total wins. The host can then start a fresh match.
+
+## Deploy
+
+`render.yaml` is included — deploy from GitHub on Render (free tier, supports WebSockets). Netlify cannot host this: it needs a persistent Node server.

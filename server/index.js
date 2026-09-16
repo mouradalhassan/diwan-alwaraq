@@ -5,12 +5,17 @@ const http = require('http');
 const express = require('express');
 const { Server } = require('socket.io');
 const { Leekha, MATCH_LIMIT } = require('./leekha');
+const Bot = require('./bot');
 
 const PORT = process.env.PORT || 3000;
 const MAX_PLAYERS = 4;
 const GIFT_SECONDS = 20;
-const TRICK_HOLD_MS = 1700;
+const TURN_SECONDS = 30;
+const TRICK_HOLD_MS = 1800;
 const LOBBY_DISCONNECT_GRACE_MS = 20000;
+// Flip to true once testing is over: the host then needs four human players
+// and bots are refused.
+const REQUIRE_FOUR_HUMANS = false;
 
 const GAMES = {
   leekha: { name: 'ليخة', ready: true },
@@ -54,10 +59,12 @@ function createRoom(gameKey) {
     code: genCode(),
     game: gameKey,
     hostId: null,
-    players: [], // { id, name, seat, socketId, connected, graceTimer }
+    players: [], // { id, name, seat, socketId, connected, isBot, graceTimer }
     engine: null,
     giftTimer: null,
     trickTimer: null,
+    turnTimer: null,
+    botTimers: [],
     notice: null,
     createdAt: Date.now(),
   };
@@ -65,10 +72,11 @@ function createRoom(gameKey) {
   return room;
 }
 
+const humans = (room) => room.players.filter((p) => !p.isBot);
+const seatPlayer = (room, seat) => room.players.find((p) => p.seat === seat);
+
 function freeSeat(room) {
-  for (let s = 0; s < MAX_PLAYERS; s++) {
-    if (!room.players.some((p) => p.seat === s)) return s;
-  }
+  for (let s = 0; s < MAX_PLAYERS; s++) if (!seatPlayer(room, s)) return s;
   return -1;
 }
 
@@ -79,7 +87,10 @@ function phaseOf(room) {
 function clearTimers(room) {
   clearTimeout(room.giftTimer);
   clearTimeout(room.trickTimer);
-  room.giftTimer = room.trickTimer = null;
+  clearTimeout(room.turnTimer);
+  room.botTimers.forEach(clearTimeout);
+  room.giftTimer = room.trickTimer = room.turnTimer = null;
+  room.botTimers = [];
 }
 
 function destroyRoom(room) {
@@ -96,11 +107,11 @@ function removePlayer(room, player) {
   room.players = room.players.filter((p) => p.id !== player.id);
   playerRoom.delete(player.id);
 
-  if (room.players.length === 0) {
+  if (humans(room).length === 0) {
     destroyRoom(room);
     return;
   }
-  if (room.hostId === player.id) room.hostId = room.players[0].id;
+  if (room.hostId === player.id) room.hostId = humans(room)[0].id;
 
   // A game cannot continue with an empty seat — fall back to the lobby.
   if (room.engine) {
@@ -109,6 +120,28 @@ function removePlayer(room, player) {
     room.notice = `${player.name} غادر الديوان — عادت الطاولة إلى المجلس`;
   }
   broadcast(room);
+}
+
+function addBots(room) {
+  const used = new Set(room.players.map((p) => p.name));
+  const pool = Bot.BOT_NAMES.filter((n) => !used.has(n));
+  let n = 0;
+  while (room.players.length < MAX_PLAYERS) {
+    const seat = freeSeat(room);
+    room.players.push({
+      id: `bot:${room.code}:${seat}`,
+      name: pool[n++ % pool.length],
+      seat,
+      socketId: null,
+      connected: true,
+      isBot: true,
+      graceTimer: null,
+    });
+  }
+}
+
+function removeBots(room) {
+  room.players = room.players.filter((p) => !p.isBot);
 }
 
 // ---------------------------------------------------------------------------
@@ -127,12 +160,15 @@ function viewFor(room, me) {
     hostId: room.hostId,
     isHost: room.hostId === me.id,
     giftSeconds: GIFT_SECONDS,
+    turnSeconds: TURN_SECONDS,
+    allowBots: !REQUIRE_FOUR_HUMANS,
     notice: room.notice,
     players: room.players.map((p) => ({
       id: p.id,
       name: p.name,
       seat: p.seat,
       connected: p.connected,
+      isBot: !!p.isBot,
       isHost: p.id === room.hostId,
     })),
   };
@@ -159,6 +195,7 @@ function viewFor(room, me) {
   if (e.phase === 'play') {
     view.trick = e.trick;
     view.turn = e.turn;
+    view.turnDeadline = e.turnDeadline || null;
     const legal = e.turn === me.seat ? e.legalPlay(me.seat) : { cards: [], reason: 'any' };
     view.legal = legal.cards;
     view.legalReason = legal.reason;
@@ -181,6 +218,8 @@ function broadcast(room) {
 // Game flow
 // ---------------------------------------------------------------------------
 
+const botDelay = (min, max) => min + Math.random() * (max - min);
+
 function startRound(room) {
   // a finished match starts fresh with zeroed totals
   if (!room.engine || room.engine.phase === 'gameOver') room.engine = new Leekha();
@@ -191,6 +230,17 @@ function startRound(room) {
   e.startRound(hostSeat + e.roundNo, GIFT_SECONDS * 1000);
   room.giftTimer = setTimeout(() => finishGift(room), GIFT_SECONDS * 1000 + 250);
   broadcast(room);
+
+  for (const bot of room.players.filter((p) => p.isBot)) {
+    room.botTimers.push(
+      setTimeout(() => {
+        if (room.engine !== e || e.phase !== 'gift' || e.giftSel[bot.seat]) return;
+        const res = e.selectGift(bot.seat, Bot.chooseGift(e.hands[bot.seat]));
+        if (res.ok && res.allDone) finishGift(room);
+        else broadcast(room);
+      }, botDelay(1200, 3200))
+    );
+  }
 }
 
 function finishGift(room) {
@@ -199,7 +249,55 @@ function finishGift(room) {
   clearTimeout(room.giftTimer);
   room.giftTimer = null;
   e.applyGifts();
+  scheduleTurn(room);
   broadcast(room);
+}
+
+// Arms the turn clock for whoever is on turn: bots play after a short
+// "thinking" pause, humans get TURN_SECONDS before a random legal card is
+// played for them.
+function scheduleTurn(room) {
+  clearTimeout(room.turnTimer);
+  room.turnTimer = null;
+  const e = room.engine;
+  if (!e || e.phase !== 'play' || e.turn === null) {
+    if (e) e.turnDeadline = null;
+    return;
+  }
+  const seat = e.turn;
+  const p = seatPlayer(room, seat);
+  e.turnDeadline = Date.now() + TURN_SECONDS * 1000;
+  const isBot = p && p.isBot;
+  room.turnTimer = setTimeout(
+    () => {
+      if (room.engine !== e || e.phase !== 'play' || e.turn !== seat) return;
+      const card = isBot ? Bot.choosePlay(e, seat) : e.randomLegal(seat);
+      doPlay(room, seat, card);
+    },
+    isBot ? botDelay(700, 1600) : TURN_SECONDS * 1000 + 300
+  );
+}
+
+function doPlay(room, seat, card) {
+  const e = room.engine;
+  const res = e.playCard(seat, card);
+  if (!res.ok) return res;
+  if (res.trickComplete) {
+    clearTimeout(room.turnTimer);
+    room.turnTimer = null;
+    e.turnDeadline = null;
+    broadcast(room);
+    room.trickTimer = setTimeout(() => {
+      if (room.engine !== e) return;
+      e.clearTrick();
+      scheduleTurn(room);
+      broadcast(room);
+    }, TRICK_HOLD_MS);
+  } else {
+    scheduleTurn(room);
+    broadcast(room);
+  }
+  return res;
 }
 
 // ---------------------------------------------------------------------------
@@ -207,7 +305,7 @@ function finishGift(room) {
 // ---------------------------------------------------------------------------
 
 io.on('connection', (socket) => {
-  let me = null; // { id, name, seat, ... } inside a room
+  let me = null;
   let room = null;
 
   const ack = (cb, payload) => typeof cb === 'function' && cb(payload);
@@ -220,6 +318,15 @@ io.on('connection', (socket) => {
     clearTimeout(p.graceTimer);
     p.graceTimer = null;
     socket.join(r.code);
+  }
+
+  function leaveCurrent() {
+    if (!room || !me) return;
+    const r = room;
+    const p = me;
+    socket.leave(r.code);
+    room = me = null;
+    removePlayer(r, p);
   }
 
   socket.on('hello', ({ playerId } = {}, cb) => {
@@ -244,7 +351,7 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('createParty', ({ playerId, name, game } = {}, cb) => {
+  socket.on('createParty', ({ playerId, name, game, withBots } = {}, cb) => {
     if (!GAMES[game]) return ack(cb, { ok: false, error: 'لعبة غير معروفة' });
     if (!GAMES[game].ready)
       return ack(cb, { ok: false, error: `${GAMES[game].name} قادمة قريباً` });
@@ -257,12 +364,14 @@ io.on('connection', (socket) => {
       seat: 0,
       socketId: null,
       connected: false,
+      isBot: false,
       graceTimer: null,
     };
     r.players.push(p);
     r.hostId = p.id;
     playerRoom.set(p.id, r.code);
     bind(r, p);
+    if (withBots && !REQUIRE_FOUR_HUMANS) addBots(r);
     broadcast(r);
     ack(cb, { ok: true, code: r.code });
   });
@@ -277,10 +386,14 @@ io.on('connection', (socket) => {
       return ack(cb, { ok: true, code: r.code });
     }
     if (playerRoom.has(playerId)) leaveCurrent();
-    if (r.players.length >= MAX_PLAYERS)
-      return ack(cb, { ok: false, error: 'الديوان ممتلئ — أربعة مقاعد فقط' });
     if (r.engine)
       return ack(cb, { ok: false, error: 'اللعبة بدأت في هذا الديوان' });
+    // a human joining a bot-filled lobby takes a bot's seat
+    if (r.players.length >= MAX_PLAYERS) {
+      const bot = r.players.find((p) => p.isBot);
+      if (!bot) return ack(cb, { ok: false, error: 'الديوان ممتلئ — أربعة مقاعد فقط' });
+      r.players = r.players.filter((p) => p !== bot);
+    }
 
     const p = {
       id: playerId,
@@ -288,6 +401,7 @@ io.on('connection', (socket) => {
       seat: freeSeat(r),
       socketId: null,
       connected: false,
+      isBot: false,
       graceTimer: null,
     };
     r.players.push(p);
@@ -298,17 +412,28 @@ io.on('connection', (socket) => {
     ack(cb, { ok: true, code: r.code });
   });
 
-  function leaveCurrent() {
-    if (!room || !me) return;
-    const r = room;
-    const p = me;
-    socket.leave(r.code);
-    room = me = null;
-    removePlayer(r, p);
-  }
-
   socket.on('leaveParty', (_, cb) => {
     leaveCurrent();
+    ack(cb, { ok: true });
+  });
+
+  socket.on('addBots', (_, cb) => {
+    if (!room || !me) return ack(cb, { ok: false, error: 'لست في ديوان' });
+    if (room.hostId !== me.id) return ack(cb, { ok: false, error: 'المضيف وحده يضيف البوتات' });
+    if (REQUIRE_FOUR_HUMANS) return ack(cb, { ok: false, error: 'اللعب مع البوتات غير متاح' });
+    if (room.engine) return ack(cb, { ok: false, error: 'اللعبة جارية' });
+    addBots(room);
+    room.notice = 'جلس البوتات على المقاعد الفارغة';
+    broadcast(room);
+    ack(cb, { ok: true });
+  });
+
+  socket.on('removeBots', (_, cb) => {
+    if (!room || !me) return ack(cb, { ok: false, error: 'لست في ديوان' });
+    if (room.hostId !== me.id) return ack(cb, { ok: false, error: 'المضيف وحده' });
+    if (room.engine) return ack(cb, { ok: false, error: 'اللعبة جارية' });
+    removeBots(room);
+    broadcast(room);
     ack(cb, { ok: true });
   });
 
@@ -318,6 +443,8 @@ io.on('connection', (socket) => {
       return ack(cb, { ok: false, error: 'المضيف وحده يبدأ اللعبة' });
     if (room.players.length !== MAX_PLAYERS)
       return ack(cb, { ok: false, error: 'بانتظار اكتمال المقاعد الأربعة' });
+    if (REQUIRE_FOUR_HUMANS && room.players.some((p) => p.isBot))
+      return ack(cb, { ok: false, error: 'يلزم أربعة لاعبين حقيقيين' });
     const phase = phaseOf(room);
     if (phase !== 'lobby' && phase !== 'roundEnd' && phase !== 'gameOver')
       return ack(cb, { ok: false, error: 'الجولة جارية' });
@@ -336,19 +463,8 @@ io.on('connection', (socket) => {
 
   socket.on('play', ({ card } = {}, cb) => {
     if (!room || !room.engine) return ack(cb, { ok: false, error: 'لا لعبة' });
-    const e = room.engine;
-    const res = e.playCard(me.seat, card);
-    if (!res.ok) return ack(cb, res);
-    broadcast(room);
-    if (res.trickComplete) {
-      const r = room;
-      r.trickTimer = setTimeout(() => {
-        if (!r.engine) return;
-        r.engine.clearTrick();
-        broadcast(r);
-      }, TRICK_HOLD_MS);
-    }
-    ack(cb, { ok: true });
+    const res = doPlay(room, me.seat, card);
+    ack(cb, res.ok ? { ok: true, trickComplete: res.trickComplete } : res);
   });
 
   socket.on('disconnect', () => {
@@ -372,7 +488,7 @@ io.on('connection', (socket) => {
 setInterval(() => {
   const now = Date.now();
   for (const r of rooms.values()) {
-    const anyone = r.players.some((p) => p.connected);
+    const anyone = humans(r).some((p) => p.connected);
     if (!anyone && now - r.createdAt > 6 * 60 * 60 * 1000) destroyRoom(r);
   }
 }, 10 * 60 * 1000).unref();
