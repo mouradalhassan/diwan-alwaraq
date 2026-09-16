@@ -11,7 +11,7 @@
 //   void  → dump the most dangerous card (the engine already forces Q♠/10♦)
 // ---------------------------------------------------------------------------
 
-const { suitOf, rankOf, RANKS, cardPoints, mostDangerous: dangerous } = require('./leekha');
+const { suitOf, rankOf, RANKS, cardPoints, mostDangerous: dangerous, legalGift } = require('./leekha');
 
 const rv = (c) => RANKS.indexOf(rankOf(c));
 const isPoint = (c) => cardPoints(c) > 0;
@@ -20,8 +20,9 @@ const lowest = (cards) => cards.slice().sort((a, b) => rv(a) - rv(b))[0];
 const highest = (cards) => cards.slice().sort((a, b) => rv(b) - rv(a))[0];
 const mostDangerous = (cards) => dangerous(cards, 1)[0];
 
+// most dangerous three that respect the gift rule (no emptying a suit)
 function chooseGift(hand) {
-  return dangerous(hand, 3);
+  return legalGift(hand);
 }
 
 function choosePlay(engine, seat) {

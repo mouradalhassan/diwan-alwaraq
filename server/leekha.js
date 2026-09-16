@@ -87,6 +87,36 @@ function mostDangerous(hand, n) {
   return hand.slice().sort((a, b) => dangerOf(b) - dangerOf(a)).slice(0, n);
 }
 
+// Gift rule: you may not empty a suit you hold — unless every card you hold
+// in that suit is dangerous (spades Q and above, diamonds 10 and above).
+const VOID_ALLOWED_FROM = { S: 'Q', D: '10' };
+function giftViolation(hand, cards) {
+  for (const s of SUITS) {
+    const mine = hand.filter((c) => suitOf(c) === s);
+    if (!mine.length) continue;
+    const giving = cards.filter((c) => suitOf(c) === s);
+    if (giving.length < mine.length) continue; // suit stays in hand
+    const from = VOID_ALLOWED_FROM[s];
+    if (from && mine.every((c) => rankValue(c) >= RANKS.indexOf(from))) continue;
+    return `لا يجوز تفريغ ${SUIT_NAMES[s]} من يدك`;
+  }
+  return null;
+}
+
+// The three most dangerous cards that still respect the gift rule.
+function legalGift(hand) {
+  const sel = [];
+  for (const c of hand.slice().sort((a, b) => dangerOf(b) - dangerOf(a))) {
+    if (sel.length === GIFT_SIZE) break;
+    if (!giftViolation(hand, sel.concat(c))) sel.push(c);
+  }
+  for (const c of hand) {
+    if (sel.length === GIFT_SIZE) break;
+    if (!sel.includes(c)) sel.push(c);
+  }
+  return sel;
+}
+
 class Leekha {
   constructor() {
     this.roundNo = 0;
@@ -135,15 +165,18 @@ class Leekha {
       if (!this.hands[seat].includes(c))
         return { ok: false, error: 'هذه الورقة ليست معك' };
     }
+    const violation = giftViolation(this.hands[seat], cards);
+    if (violation) return { ok: false, error: violation };
     this.giftSel[seat] = cards.slice();
     return { ok: true, allDone: this.giftSel.every(Boolean) };
   }
 
-  // Seats that did not pick in time give away their three most dangerous cards.
+  // Seats that did not pick in time give away their three most dangerous
+  // cards (respecting the gift rule).
   autoGift() {
     for (let s = 0; s < SEATS; s++) {
       if (this.giftSel[s]) continue;
-      this.giftSel[s] = mostDangerous(this.hands[s], GIFT_SIZE);
+      this.giftSel[s] = legalGift(this.hands[s]);
     }
   }
 
@@ -271,6 +304,8 @@ module.exports = {
   cardPoints,
   dangerOf,
   mostDangerous,
+  giftViolation,
+  legalGift,
   suitOf,
   rankOf,
   teamOf,

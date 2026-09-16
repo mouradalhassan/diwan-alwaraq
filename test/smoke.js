@@ -10,7 +10,7 @@
 process.env.PORT = '3999';
 require('../server/index.js');
 const { io } = require('socket.io-client');
-const { Leekha, cardPoints } = require('../server/leekha');
+const { Leekha, cardPoints, giftViolation, legalGift } = require('../server/leekha');
 const Bot = require('../server/bot');
 
 const URL = 'http://localhost:3999';
@@ -63,8 +63,25 @@ function engineTests() {
   assert(m.phase === 'gameOver', 'match ends when a team passes 101: ' + m.phase);
   assert(m.teamTotals()[0] === 104 && m.winnerTeam === 1, 'team 1 (lower) wins');
 
+  // gift rule: may not empty a suit unless it is all dangerous (spades Q+, diamonds 10+)
+  const h1 = ['2C', '3C', '4C', '5C', '6C', '7C', '8C', '9C', '10C', '4S', '9S', 'KS', '2H'];
+  assert(giftViolation(h1, ['4S', '9S', 'KS']) !== null, 'cannot empty spades that include low cards');
+  assert(giftViolation(h1, ['2H', '4S', '9S']) !== null, 'cannot empty hearts (single card)');
+  assert(giftViolation(h1, ['4S', '9S', '2C']) === null, 'keeping KS is fine');
+  const h2 = ['2C', '3C', '4C', '5C', '6C', '7C', '8C', '9C', 'QS', 'KS', 'AS', '10D', 'JD'];
+  assert(giftViolation(h2, ['QS', 'KS', 'AS']) === null, 'may empty spades when all are Q+');
+  assert(giftViolation(h2, ['10D', 'JD', '2C']) === null, 'may empty diamonds when all are 10+');
+  const h3 = ['2C', '3C', '4C', '5C', '6C', '7C', '8C', '9C', 'QS', 'KS', 'AS', '9D', 'JD'];
+  assert(giftViolation(h3, ['9D', 'JD', '2C']) !== null, 'cannot empty diamonds that include a 9');
+  const g1 = legalGift(h1);
+  assert(g1.length === 3 && giftViolation(h1, g1) === null && !(['4S', '9S', 'KS'].every((c) => g1.includes(c))), 'auto/bot gift keeps at least one spade: ' + g1);
   const gift = Bot.chooseGift(['2C', 'QS', '5H', '10D', 'AS', '3D', '4C']);
-  assert(gift.includes('QS') && gift.includes('10D') && gift.includes('AS'), 'bot gifts away the dangerous cards');
+  assert(giftViolation(['2C', 'QS', '5H', '10D', 'AS', '3D', '4C'], gift) === null && gift.includes('QS') && gift.includes('AS'), 'bot gifts dangerous cards legally: ' + gift);
+  const e2 = new Leekha();
+  e2.startRound(0, 1000);
+  e2.hands[0] = h1;
+  assert(!e2.selectGift(0, ['4S', '9S', 'KS']).ok, 'engine refuses an emptying gift');
+  assert(e2.selectGift(0, ['KS', '9S', '2C']).ok, 'engine accepts a legal gift');
 
   console.log('✓ engine + bot: leekha principle, follow suit, points, match end, gift choice');
 }
@@ -77,7 +94,13 @@ async function playRound(clients, views, expectedDir) {
 
   const sent = [];
   for (let i = 0; i < 4; i++) {
-    const cards = views[i].hand.slice(0, 3);
+    // an emptying gift must be refused, a legal one accepted
+    const suitHeavy = views[i].hand.slice(0, 3);
+    if (giftViolation(views[i].hand, suitHeavy)) {
+      const bad = await call(clients[i], 'gift', { cards: suitHeavy });
+      assert(!bad.ok, 'illegal (suit-emptying) gift refused');
+    }
+    const cards = legalGift(views[i].hand);
     sent[i] = cards;
     const g = await call(clients[i], 'gift', { cards });
     assert(g.ok, 'gift failed ' + JSON.stringify(g));
@@ -182,7 +205,7 @@ async function botsTest() {
 
   assert((await call(me, 'startGame', {})).ok, 'start vs bots');
   await sleep(50);
-  const g = await call(me, 'gift', { cards: views[0].hand.slice(0, 3) });
+  const g = await call(me, 'gift', { cards: legalGift(views[0].hand) });
   assert(g.ok, 'human gift');
   // bots gift within ~3.5 s on their own
   const t0 = Date.now();

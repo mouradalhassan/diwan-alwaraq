@@ -548,12 +548,31 @@
   }
 
   // ---- gift (compact bar) --------------------------------------------
+  // Gift rule (mirrors the server): you may not empty a suit you hold, unless
+  // every card you hold in it is dangerous — spades Q+, diamonds 10+.
+  const RANK_ORDER = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+  const VOID_FROM = { S: 'Q', D: '10' };
+  function giftViolation(hand, cards) {
+    for (const s of ['C', 'D', 'S', 'H']) {
+      const mine = hand.filter((c) => suitOf(c) === s);
+      if (!mine.length) continue;
+      if (cards.filter((c) => suitOf(c) === s).length < mine.length) continue;
+      const from = VOID_FROM[s];
+      if (from && mine.every((c) => RANK_ORDER.indexOf(rankOf(c)) >= RANK_ORDER.indexOf(from))) continue;
+      return `لا يجوز تفريغ ${SUIT_NAME[s]} من يدك`;
+    }
+    return null;
+  }
+
   function toggleGift(card) {
     if (state.phase !== 'gift' || state.gift.mine) return;
     const i = giftPick.indexOf(card);
     if (i >= 0) giftPick.splice(i, 1);
-    else if (giftPick.length < 3) giftPick.push(card);
-    else return toast('ثلاث أوراق فقط', 'err');
+    else if (giftPick.length < 3) {
+      const bad = giftViolation(state.hand, giftPick.concat(card));
+      if (bad) { SFX.play('error'); return toast(bad, 'err'); }
+      giftPick.push(card);
+    } else return toast('ثلاث أوراق فقط', 'err');
     SFX.play('click');
     renderHand(); renderGift();
   }
