@@ -10,10 +10,12 @@
   <link href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@400;700&family=Amiri:ital,wght@0,400;0,700;1,400&family=Cairo:wght@400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%230f3d2e'/%3E%3Cpath d='M32 6l7 19 19 7-19 7-7 19-7-19-19-7 19-7z' fill='%23c9a445'/%3E%3C/svg%3E" />
+  <!-- Image credits: Umayyad Mosque mosaics (Heretiq, Dosseman), Ben Youssef Madrasa plaster (Jc wik m001),
+       Chellah gate (Robert Prazeres) — Wikimedia Commons, CC BY-SA. Avatars: DiceBear "Adventurer" (Lisa Wischofsky,
+       CC BY 4.0) and "Bottts" (Pablo Stanley). Full list in img/ATTRIBUTION.md -->
 </head>
 <body>
 
-<!-- shared vector symbols: suits, ornaments -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
     <symbol id="s-H" viewBox="0 0 100 100"><path d="M50 92C22 68 6 50 6 32A21 21 0 0 1 50 22a21 21 0 0 1 44 10c0 18-16 36-44 60z"/></symbol>
@@ -40,39 +42,26 @@
     <button class="nav-btn" id="nav-back" hidden>← رجوع</button>
     <div class="nav-brand" id="nav-brand"><svg class="nav-star"><use href="#star8"/></svg><span>ديوان الورق</span></div>
     <div class="nav-right">
-      <span class="nav-online" id="nav-online" title="المتصلون الآن"></span>
       <button class="nav-btn nav-mute" id="nav-mute" title="الصوت">♪</button>
     </div>
   </nav>
 
   <!-- ===================== HOME ===================== -->
   <section class="screen active" id="screen-home">
-    <div class="home">
-      <div class="hero">
-        <div class="hero-photo"></div>
-        <div class="hero-inner">
-          <svg class="hero-emblem"><use href="#star8"/></svg>
-          <h1 class="brand">ديوان الورق</h1>
-          <svg class="divider gold"><use href="#divider"/></svg>
-          <p class="brand-sub">مجلسُ الورق الشامي — ليخة، تريكس، وأربعمية</p>
-          <button class="btn btn-gold btn-xl" id="btn-enter">ادخل إلى الديوان</button>
-        </div>
-        <span class="corner c1"><svg><use href="#corner"/></svg></span>
-        <span class="corner c2"><svg><use href="#corner"/></svg></span>
-        <span class="corner c3"><svg><use href="#corner"/></svg></span>
-        <span class="corner c4"><svg><use href="#corner"/></svg></span>
+    <div class="hero">
+      <div class="hero-photo"></div>
+      <div class="hero-inner">
+        <svg class="hero-emblem"><use href="#star8"/></svg>
+        <h1 class="brand">ديوان الورق</h1>
+        <svg class="divider gold"><use href="#divider"/></svg>
+        <p class="brand-sub">مجلسُ الورق الشامي — ليخة، تريكس، وأربعمية</p>
+        <button class="btn btn-gold btn-xl" id="btn-enter">ادخل إلى الديوان</button>
       </div>
-
-      <aside class="presence">
-        <div class="presence-head">
-          <span class="dot"></span>
-          <span>الديوان الآن</span>
-        </div>
-        <div class="presence-stats" id="presence-stats"></div>
-        <ul class="feed" id="feed"></ul>
-      </aside>
+      <span class="corner c1"><svg><use href="#corner"/></svg></span>
+      <span class="corner c2"><svg><use href="#corner"/></svg></span>
+      <span class="corner c3"><svg><use href="#corner"/></svg></span>
+      <span class="corner c4"><svg><use href="#corner"/></svg></span>
     </div>
-    <footer class="foot">صنع بحب لأهل الشام · <a href="img/ATTRIBUTION.md" target="_blank" rel="noopener">الصور</a></footer>
   </section>
 
   <!-- ===================== CHOOSE GAME ===================== -->
@@ -98,9 +87,7 @@
         <p class="eyebrow" id="party-game">ليخة</p>
         <h2 class="h2">من أنت؟</h2>
         <svg class="divider"><use href="#divider"/></svg>
-
         <div class="avatars" id="avatars"></div>
-
         <label class="field">
           <span>اسمك في المجلس</span>
           <input id="inp-name" maxlength="18" placeholder="أبو خليل" autocomplete="nickname" />
@@ -122,20 +109,17 @@
         <p class="eyebrow" id="lobby-game">ليخة</p>
         <h2 class="h2">مجلس الانتظار</h2>
         <svg class="divider"><use href="#divider"/></svg>
-
         <div class="code-plate">
           <span class="code-label">رمز الديوان</span>
           <span class="code-value" id="lobby-code">——————</span>
           <button class="btn btn-line btn-sm" id="btn-share">شارك الدعوة</button>
         </div>
-
         <div class="seats" id="lobby-seats"></div>
         <p class="status" id="lobby-status">بانتظار الرفاق…</p>
         <div class="actions">
           <button class="btn btn-gold btn-lg" id="btn-start" hidden disabled>ابدأ اللعبة</button>
           <button class="btn btn-line" id="btn-fill" hidden>أكمل المقاعد بالبوتات</button>
         </div>
-        <ul class="feed feed-inline" id="feed-lobby"></ul>
       </div>
     </div>
   </section>
@@ -150,7 +134,7 @@
       </div>
       <div class="hud-msg" id="hud-msg"></div>
       <div class="hud-right">
-        <div class="totals" id="totals"></div>
+        <div class="scoreboard" id="totals"></div>
         <div class="hud-tools">
           <button class="hud-btn nav-mute" id="hud-mute" title="الصوت">♪</button>
           <button class="hud-btn hud-leave" id="btn-leave-game">غادر</button>
@@ -162,10 +146,6 @@
       <div class="board">
         <div class="board-rim"></div>
         <div class="felt">
-          <span class="felt-corner c1"><svg><use href="#corner"/></svg></span>
-          <span class="felt-corner c2"><svg><use href="#corner"/></svg></span>
-          <span class="felt-corner c3"><svg><use href="#corner"/></svg></span>
-          <span class="felt-corner c4"><svg><use href="#corner"/></svg></span>
           <svg class="felt-emblem"><use href="#star8"/></svg>
           <div class="felt-msg" id="felt-msg"></div>
         </div>
@@ -174,7 +154,6 @@
       <div class="seat-spot pos-2" data-pos="2"></div>
       <div class="seat-spot pos-3" data-pos="3"></div>
       <div class="seat-spot pos-1" data-pos="1"></div>
-      <div class="seat-spot pos-0" data-pos="0"></div>
 
       <div class="trick" id="trick">
         <div class="trick-slot pos-0"></div>
@@ -213,6 +192,7 @@
     </div>
 
     <div class="hand-wrap" id="hand-wrap">
+      <div class="seat-spot pos-0 me-seat" id="me-seat" data-pos="0"></div>
       <div class="hand" id="hand"></div>
     </div>
   </section>

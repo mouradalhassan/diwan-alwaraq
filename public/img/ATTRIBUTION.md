@@ -10,4 +10,11 @@ All photographs are from Wikimedia Commons and used under their Creative Commons
 | `stone.jpg` | [Chellah gate detail](https://commons.wikimedia.org/wiki/File:Chellah_gate_detail_DSCF6947.jpg) | Robert Prazeres | CC BY-SA 4.0 |
 | `tiles.jpg` | [Bibi-Khanym Mosque, arabesque](https://commons.wikimedia.org/wiki/File:Bibi-Khanym_Mosque,_arabesque.jpg) | see file page | CC BY-SA |
 
-The site links to this file from its footer ("الصور").
+## Avatars (`avatars/`)
+
+| Set | Source | Author | License |
+|---|---|---|---|
+| `av-0.svg` … `av-11.svg` | [DiceBear "Adventurer"](https://www.dicebear.com/styles/adventurer/) | Lisa Wischofsky | CC BY 4.0 |
+| `bot.svg` | [DiceBear "Bottts"](https://www.dicebear.com/styles/bottts/) | Pablo Stanley | Free for personal and commercial use |
+
+Credits are also kept as an HTML comment in `index.html`.

@@ -166,13 +166,15 @@
     return s + '</svg>';
   }
   const botSVG = () => `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="50" fill="#3a2415"/><rect x="28" y="30" width="44" height="40" rx="8" fill="#c9a445"/><rect x="34" y="40" width="10" height="8" rx="2" fill="#1b1410"/><rect x="56" y="40" width="10" height="8" rx="2" fill="#1b1410"/><rect x="38" y="56" width="24" height="4" rx="2" fill="#1b1410"/><rect x="47" y="18" width="6" height="12" fill="#c9a445"/><circle cx="50" cy="16" r="4" fill="#e6c66a"/><rect x="20" y="42" width="8" height="16" rx="3" fill="#8d6d24"/><rect x="72" y="42" width="8" height="16" rx="3" fill="#8d6d24"/></svg>`;
-  const avatarOf = (p) => (p.isBot ? botSVG() : avatarSVG(p.avatar || 0));
+  // Avatar pictures live in img/avatars (DiceBear "Adventurer" set + a bot).
+  const avatarSrc = (i) => `img/avatars/av-${((i % AV.length) + AV.length) % AV.length}.svg`;
+  const avatarOf = (p) => `<img src="${p.isBot ? 'img/avatars/bot.svg' : avatarSrc(p.avatar || 0)}" alt="" draggable="false">`;
 
   let myAvatar = parseInt(store.get('diwan.avatar'), 10);
   if (!Number.isFinite(myAvatar)) myAvatar = Math.floor(Math.random() * AV.length);
   function renderAvatarPicker() {
     const box = $('#avatars');
-    box.innerHTML = AV.map((_, i) => `<button type="button" data-i="${i}" class="${i === myAvatar ? 'selected' : ''}" title="شخصية ${ar(i + 1)}">${avatarSVG(i)}</button>`).join('');
+    box.innerHTML = AV.map((_, i) => `<button type="button" data-i="${i}" class="${i === myAvatar ? 'selected' : ''}" title="شخصية ${ar(i + 1)}"><img src="${avatarSrc(i)}" alt="" draggable="false"></button>`).join('');
     $$('button', box).forEach((b) => b.addEventListener('click', () => {
       myAvatar = parseInt(b.dataset.i, 10);
       store.set('diwan.avatar', String(myAvatar));
@@ -269,34 +271,7 @@
   });
   socket.on('disconnect', () => toast('انقطع الاتصال… نحاول العودة', 'err'));
   socket.on('state', onState);
-  socket.on('presence', renderPresence);
   socket.on('emote', showEmote);
-
-  // ---------------------------------------------------------------------
-  // presence (home + lobby)
-  // ---------------------------------------------------------------------
-  const FEED_ICON = { create: '✦', join: '↳', start: '▶', bots: '⚙', leave: '←', win: '★', info: '·' };
-  function timeAgo(t) {
-    const s = Math.max(0, Math.round((Date.now() - t) / 1000));
-    if (s < 60) return 'الآن';
-    const m = Math.round(s / 60);
-    if (m < 60) return `${ar(m)} د`;
-    return `${ar(Math.round(m / 60))} س`;
-  }
-  let lastPresence = null;
-  function renderPresence(p) {
-    lastPresence = p;
-    $('#nav-online').innerHTML = `<b>${ar(p.online)}</b> متصل`;
-    $('#presence-stats').innerHTML = `
-      <div class="stat"><b>${ar(p.online)}</b><span>متصل الآن</span></div>
-      <div class="stat"><b>${ar(p.playing)}</b><span>يلعبون</span></div>
-      <div class="stat"><b>${ar(p.tables)}</b><span>ديوان مفتوح</span></div>`;
-    const items = (p.feed.length ? p.feed : [{ t: Date.now(), text: 'المجلس هادئ — كن أول من يفتح ديواناً', kind: 'info' }])
-      .map((f) => `<li class="${f.kind}"><span class="ic">${FEED_ICON[f.kind] || '·'}</span><span>${esc(f.text)}</span><span class="tm">${timeAgo(f.t)}</span></li>`).join('');
-    $('#feed').innerHTML = items;
-    $('#feed-lobby').innerHTML = items;
-  }
-  setInterval(() => { if (lastPresence && (current === 'screen-home' || current === 'screen-lobby')) renderPresence(lastPresence); }, 30000);
 
   // ---------------------------------------------------------------------
   // home / choose / party
@@ -400,7 +375,7 @@
       const p = playerAtSeat(seat);
       const wasTurn = spot.classList.contains('turn');
       const bubble = spot.querySelector('.emote-bubble');
-      spot.className = `seat-spot pos-${pos}`;
+      spot.className = `seat-spot pos-${pos}${pos === 0 ? ' me-seat' : ''}`;
       if (!p) { spot.classList.add('empty'); spot.innerHTML = `<div class="avatar-wrap"><div class="avatar"></div></div>`; continue; }
       if (!p.connected) spot.classList.add('offline');
       if (p.isBot) spot.classList.add('bot');
@@ -427,6 +402,8 @@
     }
   }
 
+  // running total = finished rounds + what was eaten so far this round
+  const liveTotal = (s, v = state) => (v.totals ? v.totals[s] : 0) + (v.roundPoints ? v.roundPoints[s] : 0);
   function renderTotals() {
     const box = $('#totals');
     if (!state.totals) { box.innerHTML = ''; return; }
@@ -434,7 +411,8 @@
       const seat = seatAt(pos);
       const p = playerAtSeat(seat);
       const cls = seat === state.mySeat ? 'row-me' : seat % 2 === state.mySeat % 2 ? 'row-mine' : 'row-them';
-      return `<span class="tn ${cls}">${p ? esc(p.name) : '—'}</span><span class="tv ${cls}">${ar(state.totals[seat])}</span>`;
+      const changed = prev && prev.totals && liveTotal(seat, prev) !== liveTotal(seat);
+      return `<span class="sn ${cls}">${p ? avatarOf(p) + esc(p.name) : '—'}</span><span class="sv ${cls} ${changed ? 'bump' : ''}">${ar(liveTotal(seat))}</span>`;
     }).join('');
   }
 
@@ -534,8 +512,13 @@
     if (state.trick.winner !== null && state.trick.winner !== undefined) {
       const w = playerAtSeat(state.trick.winner);
       const pts = state.trick.points;
-      banner.textContent = pts ? `${w ? w.name : ''} أكل ${ar(pts)} ${pts === 1 ? 'نقطة' : 'نقاط'}` : `${w ? w.name : ''} أخذ الليخة`;
-      banner.classList.add('show');
+      const cards = state.trick.plays.map((p) => p.card);
+      const leekha = cards.includes('QS') || cards.includes('10D');
+      const hearts = cards.filter((c) => suitOf(c) === 'H').length;
+      // "أكل الليخة" only when Q♠ or 10♦ was eaten; hearts alone get a quieter note; nothing for a clean trick
+      if (leekha) banner.textContent = `${w ? w.name : ''} أكل الليخة +${ar(pts)}`;
+      else if (hearts) banner.textContent = `${w ? w.name : ''} أكل ${ar(hearts)} ${hearts === 1 ? 'كبّة' : 'كبّات'}`;
+      banner.classList.toggle('show', pts > 0);
     } else banner.classList.remove('show');
   }
 
