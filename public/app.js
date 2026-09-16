@@ -368,10 +368,35 @@
   const pending = new Set();
   let lastTap = {};
 
+  // Card size and overlap are computed from the real space beside my seat, so
+  // 13 cards always fit on any phone; the same --cw feeds the trick and flights.
+  let fitKey = '';
+  function fitCards() {
+    const wrap = $('#hand-wrap');
+    if (!wrap || current !== 'screen-table') return;
+    const seat = $('#me-seat');
+    const avail = wrap.clientWidth - (seat ? seat.offsetWidth : 0) - 20;
+    const n = Math.max(7, (state && state.hand ? state.hand.length : 13));
+    const key = `${avail}|${n}|${window.innerHeight}`;
+    if (key === fitKey) return;
+    fitKey = key;
+    const maxByH = Math.floor(window.innerHeight * 0.115);
+    let cw = Math.max(46, Math.min(78, Math.floor(avail / (1 + (n - 1) * 0.4)), maxByH));
+    // overlap so the whole hand spans at most the available width
+    let ov = 1 - (avail / cw - 1) / (n - 1);
+    ov = Math.max(0.44, Math.min(0.7, ov));
+    document.documentElement.style.setProperty('--cw', cw + 'px');
+    document.documentElement.style.setProperty('--ov', ov.toFixed(3));
+  }
+  let resizeT = null;
+  window.addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(() => { fitKey = ''; fitCards(); }, 120); });
+
   function renderTable() {
     $('#hud-game').textContent = state.gameName;
     $('#hud-round').textContent = `الجولة ${ar(state.round)}`;
     if (state.round !== lastRound) { giftPick = []; lastRound = state.round; }
+    show('screen-table');
+    fitCards();
     renderSeats(); renderHand(); renderTrick(); renderGift(); renderHud(); renderTotals(); renderScoresOverlay();
     $('#btn-last').hidden = !(state.phase === 'play' && state.lastTrick);
   }
@@ -425,14 +450,20 @@
   }
 
   // ---- hand -----------------------------------------------------------
-  function renderHand() {
+  let handKey = '';
+  function renderHand(force = false) {
     const hand = $('#hand');
     const cards = state.hand || [];
     const legal = new Set(state.legal || []);
     const received = new Set(state.received || []);
     const n = cards.length;
-    hand.innerHTML = '';
     const myTurn = state.phase === 'play' && state.turn === state.mySeat && state.trick && state.trick.winner === null;
+    // rebuild the DOM only when something visible changed — every socket event otherwise
+    // re-created 13 cards, which stutters on phones
+    const key = [state.phase, myTurn, cards.join(','), [...legal].join(','), giftPick.join(','), [...pending].join(','), state.gift && state.gift.mine ? 1 : 0, state.cardsLeft ? state.cardsLeft[state.mySeat] : 0].join('|');
+    if (!force && key === handKey) return;
+    handKey = key;
+    hand.innerHTML = '';
     cards.forEach((c, i) => {
       const el = cardEl(c);
       const t = n > 1 ? (i - (n - 1) / 2) / ((n - 1) / 2) : 0;
@@ -751,12 +782,13 @@
     bar.hidden = true;
     await sleep(120);
     SFX.play('deal');
+    // light on purpose: two backs per opponent, then my cards one by one (phones keep 60 fps)
     for (let pos = 1; pos < 4; pos++) {
       const spot = $(`.seat-spot.pos-${pos}`);
-      for (let k = 0; k < 4; k++) setTimeout(() => fly(backEl(), from, centerRect(spot.querySelector('.avatar') || spot, 26), { duration: 320, fade: true, scaleTo: 0.5 }), k * 45 + pos * 40);
+      for (let k = 0; k < 2; k++) setTimeout(() => fly(backEl(), from, centerRect(spot.querySelector('.avatar') || spot, 26), { duration: 300, fade: true, scaleTo: 0.5 }), k * 70 + pos * 50);
     }
-    hand.forEach((c, i) => setTimeout(() => { fly(cardEl(c.dataset.card), from, rectOf(c), { duration: 300 }).then(() => c.classList.remove('dealt')); }, 200 + i * 45));
-    await sleep(200 + hand.length * 45 + 320);
+    hand.forEach((c, i) => setTimeout(() => { fly(cardEl(c.dataset.card), from, rectOf(c), { duration: 260 }).then(() => c.classList.remove('dealt')); }, 180 + i * 38));
+    await sleep(180 + hand.length * 38 + 280);
     if (state && state.phase === 'gift') { bar.hidden = false; renderGift(); }
   }
 
@@ -765,7 +797,7 @@
     if (state.phase === 'lobby') {
       renderLobby(); show('screen-lobby');
       $('#overlay-scores').hidden = true;
-      scoresOpen = false; giftPick = []; lastRound = 0; roundEndShown = 0; pending.clear();
-    } else { renderTable(); show('screen-table'); }
+      scoresOpen = false; giftPick = []; lastRound = 0; roundEndShown = 0; pending.clear(); handKey = ''; fitKey = '';
+    } else { renderTable(); }
   }
 })();
