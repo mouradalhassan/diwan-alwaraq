@@ -208,15 +208,23 @@
   // ---------------------------------------------------------------------
   // flight animations
   // ---------------------------------------------------------------------
+  // The clone is laid out at full card size (the larger of the two ends) so
+  // its pips/index never overflow; the size change is done with scale().
   function fly(el, from, to, { duration = 420, scaleTo = 1, fade = false, rotate = 0 } = {}) {
     const layer = $('#fly');
-    Object.assign(el.style, { left: from.left + 'px', top: from.top + 'px', width: from.width + 'px', height: from.height + 'px' });
+    const w = Math.max(from.width, to.width, 40);
+    const h = w * 1.4;
+    const fx = from.left + from.width / 2 - w / 2;
+    const fy = from.top + from.height / 2 - h / 2;
+    Object.assign(el.style, { left: fx + 'px', top: fy + 'px', width: w + 'px', height: h + 'px' });
+    el.style.setProperty('--cw', w + 'px');
     layer.appendChild(el);
     const dx = to.left + to.width / 2 - (from.left + from.width / 2);
     const dy = to.top + to.height / 2 - (from.top + from.height / 2);
-    const sc = (to.width / from.width) * scaleTo;
+    const s0 = Math.max(0.15, from.width / w);
+    const s1 = Math.max(0.15, (to.width / w) * scaleTo);
     const anim = el.animate(
-      [{ transform: 'translate(0,0) scale(1) rotate(0deg)', opacity: 1 }, { transform: `translate(${dx}px,${dy}px) scale(${sc}) rotate(${rotate}deg)`, opacity: fade ? 0 : 1 }],
+      [{ transform: `translate(0,0) scale(${s0}) rotate(0deg)`, opacity: 1 }, { transform: `translate(${dx}px,${dy}px) scale(${s1}) rotate(${rotate}deg)`, opacity: fade ? 0 : 1 }],
       { duration, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'forwards' }
     );
     return new Promise((res) => { anim.onfinish = () => { el.remove(); res(); }; });
